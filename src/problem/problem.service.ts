@@ -75,13 +75,52 @@ export class ProblemService {
   /**
    * (Optional) Get all available problems
    */
-  async getAllProblems() {
-    return this.problemRepo.find(
-      {
-    order: { id: 'ASC' }, // optional: sorts by insertion order
-  }
-    );
-  }
+   async getAllProblems() {
+  const problems = await this.problemRepo.find({
+    relations: [
+      'functionSignatures',
+      'functionNames',
+      'testCases',
+      'functionSignatures.language',
+      'functionNames.language',
+    ],
+    order: { id: 'ASC' },
+  });
+
+  return problems.map(problem => {
+    const languageConfigs: {
+      language: string;
+      signature: string;
+      functionName: string;
+    }[] = [];
+
+    for (const sig of problem.functionSignatures) {
+      const lang = sig.language?.name;
+      const name = problem.functionNames.find(
+        fn => fn.languageId === sig.languageId,
+      );
+      if (lang && name) {
+        languageConfigs.push({
+          language: lang,
+          signature: sig.signature,
+          functionName: name.name,
+        });
+      }
+    }
+
+    return {
+      key: problem.key,
+      title: problem.title,
+      description: problem.description,
+      languageConfigs,
+      testCases: problem.testCases.map(tc => ({
+        input: tc.input,
+        expectedOutput: tc.expectedOutput,
+      })),
+    };
+  });
+}
+
  
 
   async addProblem(dto: CreateProblemDto) {

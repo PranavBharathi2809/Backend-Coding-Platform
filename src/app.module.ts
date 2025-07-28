@@ -9,7 +9,7 @@
 // })
 // export class AppModule {}
 
-
+import { SubmissionModule } from './submissions/submission.module';
 import { Module } from '@nestjs/common';
 import { ExecuteModule } from './execute/execute.module';
 import { ProblemModule } from './problem/problem.module';
@@ -27,6 +27,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       synchronize: true,       // use only in development!
       logging: true,
     })
-    ,ExecuteModule, ProblemModule],
+    ,ExecuteModule, ProblemModule,SubmissionModule],
 })
 export class AppModule {}
