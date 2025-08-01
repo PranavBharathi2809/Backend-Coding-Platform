@@ -1,9 +1,10 @@
 // src/problem/entities/problem.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
-import { OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column ,JoinColumn} from 'typeorm';
+import { OneToMany,ManyToOne } from 'typeorm';
 import { FunctionSignature } from './function-signature.entity';
 import { FunctionName } from './function-name.entity';
 import { TestCase } from './test-case.entity';
+import { ExperienceLevel } from 'src/evaluation/entities/experience_levels.entity';
 
 
 
@@ -21,6 +22,13 @@ export class Problem {
   @Column({ type: 'text' })
   description: string;
 
+  @Column({
+    type: 'enum',
+    enum: ['easy', 'medium', 'hard'],
+     //nullable: true,
+  })
+  difficulty: 'easy' | 'medium' | 'hard'; 
+
    @OneToMany(() => FunctionSignature, (fs) => fs.problem)
   functionSignatures: FunctionSignature[];
 
@@ -31,6 +39,13 @@ export class Problem {
   // ✅ Already likely present, but make sure
   @OneToMany(() => TestCase, (tc) => tc.problem)
   testCases: TestCase[];
+
+//   @ManyToOne(() => ExperienceLevel)
+// @JoinColumn({ name: 'exp_level_id' })
+// experienceLevel: ExperienceLevel;
+
+//   @Column()
+//   experienceLevelId: string;
 }
   
 

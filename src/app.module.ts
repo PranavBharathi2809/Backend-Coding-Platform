@@ -14,6 +14,8 @@ import { Module } from '@nestjs/common';
 import { ExecuteModule } from './execute/execute.module';
 import { ProblemModule } from './problem/problem.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ApplicantQuestionModule } from './applicant-questions/applicant-question.module';
+
 @Module({
   imports: [ 
     TypeOrmModule.forRoot({
@@ -25,8 +27,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       database: 'CodingPlatformDB',
       autoLoadEntities: true,  // automatically loads entities
       synchronize: true,       // use only in development!
-      logging: true,
+      // logging: true,
     })
-    ,ExecuteModule, ProblemModule,SubmissionModule],
+    ,ExecuteModule, ProblemModule,SubmissionModule, ApplicantQuestionModule],
 })
 export class AppModule {}

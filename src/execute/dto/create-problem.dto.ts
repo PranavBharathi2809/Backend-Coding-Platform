@@ -1,4 +1,4 @@
-import { IsString, IsArray, ValidateNested } from 'class-validator';
+import { IsString, IsArray, ValidateNested, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class TestCaseDto {
@@ -29,6 +29,12 @@ export class CreateProblemDto {
 
   @IsString()
   description: string;
+
+
+  @IsEnum(['easy', 'medium', 'hard'], {
+    message: 'Difficulty must be one of: easy, medium, hard',
+  })
+  difficulty: 'easy' | 'medium' | 'hard'; 
 
   @IsArray()
   @ValidateNested({ each: true })

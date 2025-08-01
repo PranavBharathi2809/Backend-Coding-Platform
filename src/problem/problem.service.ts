@@ -53,7 +53,7 @@ export class ProblemService {
 
     const testCases = await this.testCaseRepo.find({
       where: { problemId: problem.id },
-      order: { id: 'ASC' }, // optional: ensure consistent order
+      order: { id: 'ASC' },
     });
 
     if (!signature || !functionName) {
@@ -66,6 +66,7 @@ export class ProblemService {
       problemId: problem.id,
       title: problem.title,
       description: problem.description,
+      difficulty: problem.difficulty, // ✅ include difficulty
       signature: signature.signature,
       functionName: functionName.name,
       testCases,
@@ -73,97 +74,97 @@ export class ProblemService {
   }
 
   /**
-   * (Optional) Get all available problems
+   * Get all problems
    */
-   async getAllProblems() {
-  const problems = await this.problemRepo.find({
-    relations: [
-      'functionSignatures',
-      'functionNames',
-      'testCases',
-      'functionSignatures.language',
-      'functionNames.language',
-    ],
-    order: { id: 'ASC' },
-  });
+  async getAllProblems() {
+    const problems = await this.problemRepo.find({
+      relations: [
+        'functionSignatures',
+        'functionNames',
+        'testCases',
+        'functionSignatures.language',
+        'functionNames.language',
+      ],
+      order: { id: 'ASC' },
+    });
 
-  return problems.map(problem => {
-    const languageConfigs: {
-      language: string;
-      signature: string;
-      functionName: string;
-    }[] = [];
+    return problems.map(problem => {
+      const languageConfigs: {
+        language: string;
+        signature: string;
+        functionName: string;
+      }[] = [];
 
-    for (const sig of problem.functionSignatures) {
-      const lang = sig.language?.name;
-      const name = problem.functionNames.find(
-        fn => fn.languageId === sig.languageId,
-      );
-      if (lang && name) {
-        languageConfigs.push({
-          language: lang,
-          signature: sig.signature,
-          functionName: name.name,
-        });
+      for (const sig of problem.functionSignatures) {
+        const lang = sig.language?.name;
+        const name = problem.functionNames.find(
+          fn => fn.languageId === sig.languageId,
+        );
+        if (lang && name) {
+          languageConfigs.push({
+            language: lang,
+            signature: sig.signature,
+            functionName: name.name,
+          });
+        }
       }
+
+      return {
+        key: problem.key,
+        title: problem.title,
+        description: problem.description,
+        difficulty: problem.difficulty, // ✅ include difficulty
+        languageConfigs,
+        testCases: problem.testCases.map(tc => ({
+          input: tc.input,
+          expectedOutput: tc.expectedOutput,
+        })),
+      };
+    });
+  }
+
+  /**
+   * Create a new problem
+   */
+  async addProblem(dto: CreateProblemDto) {
+    const { key, title, description, difficulty, languageConfigs, testCases } = dto;
+
+    const existing = await this.problemRepo.findOne({ where: { key } });
+    if (existing) throw new Error(`Problem with key '${key}' already exists`);
+
+    const problem = this.problemRepo.create({ key, title, description, difficulty }); // ✅ save difficulty
+    await this.problemRepo.save(problem);
+
+    for (const lang of languageConfigs) {
+      const language = await this.languageRepo.findOne({ where: { name: lang.language } });
+      if (!language) throw new Error(`Language '${lang.language}' not found`);
+
+      const signature = this.signatureRepo.create({
+        problemId: problem.id,
+        languageId: language.id,
+        signature: lang.signature,
+      });
+
+      const functionName = this.nameRepo.create({
+        problemId: problem.id,
+        languageId: language.id,
+        name: lang.functionName,
+      });
+
+      await this.signatureRepo.save(signature);
+      await this.nameRepo.save(functionName);
     }
 
-    return {
-      key: problem.key,
-      title: problem.title,
-      description: problem.description,
-      languageConfigs,
-      testCases: problem.testCases.map(tc => ({
+    for (const tc of testCases) {
+      const testCase = this.testCaseRepo.create({
+        problemId: problem.id,
         input: tc.input,
         expectedOutput: tc.expectedOutput,
-      })),
-    };
-  });
-}
+      });
 
- 
+      await this.testCaseRepo.save(testCase);
+    }
 
-  async addProblem(dto: CreateProblemDto) {
-  const { key, title, description, languageConfigs, testCases } = dto;
-
-  const existing = await this.problemRepo.findOne({ where: { key } });
-  if (existing) throw new Error(`Problem with key '${key}' already exists`);
-
-  const problem = this.problemRepo.create({ key, title, description });
-  await this.problemRepo.save(problem);
-
-  for (const lang of languageConfigs) {
-    const language = await this.languageRepo.findOne({ where: { name: lang.language } });
-    if (!language) throw new Error(`Language '${lang.language}' not found`);
-
-    const signature = this.signatureRepo.create({
-      problemId: problem.id,
-      languageId: language.id,
-      signature: lang.signature,
-    });
-
-    const functionName = this.nameRepo.create({
-      problemId: problem.id,
-      languageId: language.id,
-      name: lang.functionName,
-    });
-
-    await this.signatureRepo.save(signature);
-    await this.nameRepo.save(functionName);
+    return { message: 'Problem added successfully', problemId: problem.id };
   }
-
-  for (const tc of testCases) {
-    const testCase = this.testCaseRepo.create({
-      problemId: problem.id,
-      input: tc.input,
-      expectedOutput: tc.expectedOutput,
-    });
-
-    await this.testCaseRepo.save(testCase);
-  }
-
-  return { message: 'Problem added successfully', problemId: problem.id };
-}
-
-  
 }

@@ -343,284 +343,52 @@ ${userCode}
             `.trim();
     }
 
-case 'c': {
-            // Determine the arguments to pass to the user's function in main().
-            // For a matrix, it's typically (matrix_ptr, rows, cols).
-            // For a 1D array, it's (array_ptr, size).
-            const mainFunctionCallArgs = params.map(p => {
-                if (p.type === 'int[][]' || p.type === 'float[][]' || p.type === 'double[][]' || p.type === 'string[][]') {
-                    return `${p.name}`; // Pass matrix, rows, and cols
-                }
-                if (p.type === 'int[]' || p.type === 'float[]' || p.type === 'double[]' || p.type === 'string[]') {
-                    return `${p.name}, ${p.name}_size`; // Pass array and its size
-                }
-                return p.name; // For scalar types
-            }).join(', ');
-
-            const matrixParam = params.find(p => p.type.endsWith('[][]'));
-            const arrayParams = params.filter(p => p.type.endsWith('[]') && !p.type.endsWith('[][]'));
-            const scalarParams = params.filter(p => ['int', 'float', 'double', 'string', 'bool'].includes(p.type));
-
-            let inputParsers = `
-    // Dynamically read entire input from stdin
-    char *raw_input_buffer = NULL;
-    size_t raw_input_len = 0;
-    char chunk[1024]; // Read in chunks
-    while (fgets(chunk, sizeof(chunk), stdin) != NULL) {
-        size_t chunk_len = strlen(chunk);
-        raw_input_buffer = (char*)realloc(raw_input_buffer, raw_input_len + chunk_len + 1);
-        if (raw_input_buffer == NULL) { fprintf(stderr, "Memory allocation failed for input buffer.\\n"); return 1; }
-        strcpy(raw_input_buffer + raw_input_len, chunk);
-        raw_input_len += chunk_len;
-    }
-    if (raw_input_len == 0 && raw_input_buffer != NULL) { // Handle case where only a newline was read
-        free(raw_input_buffer);
-        raw_input_buffer = NULL;
-    }
-
-    // Create a mutable copy for tokenization, as strtok modifies the string.
-    char *mutable_input_copy = NULL;
-    if (raw_input_buffer != NULL) {
-        mutable_input_copy = strdup(raw_input_buffer);
-        if (mutable_input_copy == NULL) { fprintf(stderr, "Memory allocation failed for mutable input copy.\\n"); return 1; }
-        free(raw_input_buffer); // Free the original buffer as we have a duplicate
-    } else {
-        mutable_input_copy = strdup(""); // Provide an empty string if no input was given
-        if (mutable_input_copy == NULL) { fprintf(stderr, "Memory allocation failed for empty string copy.\\n"); return 1; }
-    }
     
-    // Remove trailing newline/carriage return characters from the end of the input
-    mutable_input_copy[strcspn(mutable_input_copy, "\\n\\r")] = 0;
-    `;
-
-            // MATRIX Parsing
-            if (matrixParam) {
-                const base = matrixParam.type.replace('[][]', '');
-                const cType = base === 'string' ? 'char*' :
-                              base === 'float' ? 'float' :
-                              base === 'double' ? 'double' : 'int';
-
-                inputParsers += `
-    int rows = 0;
-    int cols = 0;
-
-    // Count rows based on semicolons
-    char *rows_temp = strdup(mutable_input_copy); // Use a copy for counting rows
-    if (rows_temp == NULL) { fprintf(stderr, "Memory allocation failed for row counter.\\n"); return 1; }
-    if (strlen(rows_temp) > 0) { // Only count if there's actual content
-        for (int i = 0; rows_temp[i]; i++) {
-            if (rows_temp[i] == ';') rows++;
-        }
-        rows++; // The last row doesn't have a trailing semicolon
-    } else {
-        rows = 0; // No input, so 0 rows
-    }
-    free(rows_temp);
-
-
-    ${cType}** ${matrixParam.name} = NULL;
-    if (rows > 0) {
-        ${matrixParam.name} = (${cType}**)malloc(rows * sizeof(${cType}*));
-        if (${matrixParam.name} == NULL) { fprintf(stderr, "Matrix row allocation failed for ${matrixParam.name}.\\n"); return 1; }
-    } else {
-        // Handle empty matrix or no input scenario
-        ${matrixParam.name} = NULL; // Explicitly null for 0 rows
-    }
-    
-    // Tokenize the mutable_input_copy by semicolons for rows
-    char *matrix_str_copy_for_rows = strdup(mutable_input_copy);
-    if (matrix_str_copy_for_rows == NULL) { fprintf(stderr, "Memory allocation failed for matrix row parsing.\\n"); return 1; }
-
-    char *row_token = strtok(matrix_str_copy_for_rows, ";");
-    int current_row_idx = 0;
-    while (row_token != NULL && current_row_idx < rows) {
-        // Create a mutable copy of the current row string for column tokenization
-        char *col_parse_copy = strdup(row_token);
-        if (col_parse_copy == NULL) { fprintf(stderr, "Memory allocation failed for column parsing.\\n"); return 1; }
-        
-        // Replace commas with spaces within the row string
-        for (int i = 0; col_parse_copy[i]; i++) {
-            if (col_parse_copy[i] == ',') {
-                col_parse_copy[i] = ' ';
-            }
-        }
-
-        // Count columns in the first row to determine 'cols' for the entire matrix
-        int current_cols_in_row = 0;
-        char *temp_col_counter_copy = strdup(col_parse_copy); // Use a temporary copy for counting
-        if (temp_col_counter_copy == NULL) { fprintf(stderr, "Memory allocation failed for column counter.\\n"); return 1; }
-        char *count_tok = strtok(temp_col_counter_copy, " ");
-        while(count_tok != NULL) {
-            if (strlen(count_tok) > 0) current_cols_in_row++; // Only count non-empty tokens
-            count_tok = strtok(NULL, " ");
-        }
-        free(temp_col_counter_copy);
-
-        if (current_row_idx == 0) {
-            cols = current_cols_in_row; // Set total columns from the first row
-            // If cols is 0 after parsing, this means the first row was empty or malformed.
-            // You might want to add error handling or assume a default.
-        }
-
-        if (cols == 0) { // If no columns were found (e.g., empty row string), allocate 0 space
-            ${matrixParam.name}[current_row_idx] = NULL; // Or handle as appropriate
-        } else {
-            ${matrixParam.name}[current_row_idx] = (${cType}*)malloc(cols * sizeof(${cType}));
-            if (${matrixParam.name}[current_row_idx] == NULL) { fprintf(stderr, "Matrix column allocation failed for row %d.\\n", current_row_idx); return 1; }
-        }
-
-        // Tokenize the row string by spaces for individual elements
-        char* element_token = strtok(col_parse_copy, " ");
-        int current_col_idx = 0;
-        while (element_token != NULL && current_col_idx < cols) {
-            if (strlen(element_token) > 0) { // Ensure token is not empty
-                ${
-                    base === 'float' ? `${matrixParam.name}[current_row_idx][current_col_idx++] = strtof(element_token, NULL);` :
-                    base === 'double' ? `${matrixParam.name}[current_row_idx][current_col_idx++] = strtod(element_token, NULL);` :
-                    base === 'string' ? `${matrixParam.name}[current_row_idx][current_col_idx++] = strdup(element_token);` :
-                    `${matrixParam.name}[current_row_idx][current_col_idx++] = atoi(element_token);`
-                }
-            }
-            element_token = strtok(NULL, " ");
-        }
-        free(col_parse_copy); // Free the copy of the row string
-        
-        row_token = strtok(NULL, ";");
-        current_row_idx++;
-    }
-    free(matrix_str_copy_for_rows); // Free the copy used for row splitting
-    `;
-            }
-
-            // ARRAYS (for any 1D array parameters)
-            for (const param of arrayParams) {
-                const base = param.type.replace('[]', '');
-                const name = param.name;
-                const cType = base === 'string' ? 'char*' : (base === 'float' ? 'float' : (base === 'double' ? 'double' : 'int'));
-
-                inputParsers += `
-    int ${name}_size = 0;
-    int ${name}_capacity = 10;
-    ${cType}* ${name} = (${cType}*)malloc(${name}_capacity * sizeof(${cType}));
-    if (${name} == NULL) { fprintf(stderr, "Array allocation failed for ${name}.\\n"); return 1; }
-
-    char* array_input_copy = strdup(mutable_input_copy); // Use a fresh copy for this array's parsing
-    if (array_input_copy == NULL) { fprintf(stderr, "Memory allocation failed for array input copy.\\n"); return 1; }
-
-    // Replace commas with spaces in this copy
-    for (int i = 0; array_input_copy[i]; i++) {
-        if (array_input_copy[i] == ',') {
-            array_input_copy[i] = ' ';
-        }
-    }
-
-    char* array_token = strtok(array_input_copy, " ");
-    while (array_token != NULL) {
-        if (strlen(array_token) > 0) { // Only process non-empty tokens
-            if (${name}_size == ${name}_capacity) {
-                ${name}_capacity *= 2;
-                ${cType}* temp_realloc = (${cType}*)realloc(${name}, ${name}_capacity * sizeof(${cType}));
-                if (temp_realloc == NULL) { fprintf(stderr, "Array realloc failed for ${name}.\\n"); return 1; }
-                ${name} = temp_realloc;
-            }
-            ${
-                base === 'float' ? `${name}[${name}_size++] = strtof(array_token, NULL);` :
-                base === 'double' ? `${name}[${name}_size++] = strtod(array_token, NULL);` :
-                base === 'string' ? `${name}[${name}_size++] = strdup(array_token);` :
-                `${name}[${name}_size++] = atoi(array_token);`
-            }
-        }
-        array_token = strtok(NULL, " ");
-    }
-    free(array_input_copy); // Free the copy used for this array
-    `;
-            }
-
-            // SCALARS (only if no arrays or matrices were parsed from the main input line)
-            // This logic assumes scalars are space/comma separated on a single line
-            if (scalarParams.length > 0 && arrayParams.length === 0 && !matrixParam) {
-                inputParsers += `
-    char *scalar_input_copy = strdup(mutable_input_copy); // Copy for scalar parsing
-    if (scalar_input_copy == NULL) { fprintf(stderr, "Memory allocation failed for scalar input copy.\\n"); return 1; }
-
-    // Replace commas with spaces in this copy
-    for (int i = 0; scalar_input_copy[i]; i++) {
-        if (scalar_input_copy[i] == ',') {
-            scalar_input_copy[i] = ' ';
-        }
-    }
-
-    char *scalar_token = strtok(scalar_input_copy, " ");
-    `;
-                for (const p of scalarParams) {
-                    inputParsers += `    `; // Indent
-                    if (p.type === 'string') {
-                        inputParsers += `char ${p.name}[1000]; // Fixed size buffer for string scalar
-    if (scalar_token != NULL) { strcpy(${p.name}, scalar_token); scalar_token = strtok(NULL, " "); } else { ${p.name}[0] = '\\0'; } // Handle missing token\n`;
-                    } else if (p.type === 'float') {
-                        inputParsers += `float ${p.name};\n    if (scalar_token != NULL) { ${p.name} = strtof(scalar_token, NULL); scalar_token = strtok(NULL, " "); } else { ${p.name} = 0.0f; } // Handle missing token\n`;
-                    } else if (p.type === 'double') {
-                        inputParsers += `double ${p.name};\n    if (scalar_token != NULL) { ${p.name} = strtod(scalar_token, NULL); scalar_token = strtok(NULL, " "); } else { ${p.name} = 0.0; } // Handle missing token\n`;
-                    } else if (p.type === 'bool') {
-                        inputParsers += `bool ${p.name};\n    if (scalar_token != NULL) { ${p.name} = (strcmp(scalar_token, "true") == 0 || strcmp(scalar_token, "1") == 0); scalar_token = strtok(NULL, " "); } else { ${p.name} = false; } // Handle missing token\n`;
-                    } else { // int
-                        inputParsers += `int ${p.name};\n    if (scalar_token != NULL) { ${p.name} = atoi(scalar_token); scalar_token = strtok(NULL, " "); } else { ${p.name} = 0; } // Handle missing token\n`;
-                    }
-                }
-                inputParsers += `    free(scalar_input_copy);\n`; // Free scalar copy
-            }
-
-            // CLEANUP
-            let cleanup = `\n    free(mutable_input_copy);\n`;
-
-            if (matrixParam) {
-                cleanup += `
-    if (${matrixParam.name} != NULL) {
-        for (int i = 0; i < rows; i++) {
-            if (${matrixParam.name}[i] != NULL) {
-                // If it's a string matrix, free individual strings first
-                ${matrixParam.type === 'string[][]' ? `for (int j = 0; j < cols; j++) { if (${matrixParam.name}[i][j] != NULL) free(${matrixParam.name}[i][j]); }` : ''}
-                free(${matrixParam.name}[i]);
-            }
-        }
-        free(${matrixParam.name});
-    }`;
-            }
-
-            for (const param of arrayParams) {
-                if (param.type === 'string[]') {
-                    cleanup += `
-    if (${param.name} != NULL) {
-        for (int i = 0; i < ${param.name}_size; i++) { if (${param.name}[i] != NULL) free(${param.name}[i]); }
-    }`;
-                }
-                cleanup += `\n    if (${param.name} != NULL) free(${param.name});`;
-            }
-
-
-            return `
+  case 'c': {
+  return `
 #include <stdio.h>
-#include <stdlib.h> // For malloc, realloc, free, atoi, strtof, strtod
-#include <string.h> // For strlen, strcpy, strcat, strtok, strcspn, strdup
-#include <stdbool.h> // For bool type
+#include <stdlib.h>
+#include <ctype.h>
 
-// User's function signature
-${signature}  // Add opening brace here
-// User's code (this should be the function body)
+${signature}
 ${userCode}
-} // Close the user's function block
+}
 
 int main() {
-${inputParsers}
+    int *nums = NULL;
+    int size = 0, capacity = 10;
+    nums = malloc(capacity * sizeof(int));
+    if (!nums) return 1;
 
-    // Call the user's function with the correctly parsed arguments
-    printf("%d\n", ${functionName}(${mainFunctionCallArgs}));
+    int num;
+    char c;
+    while (scanf("%d", &num) == 1) {
+        if (size == capacity) {
+            capacity *= 2;
+            int *temp = realloc(nums, capacity * sizeof(int));
+            if (!temp) {
+                free(nums);
+                return 1;
+            }
+            nums = temp;
+        }
+        nums[size++] = num;
 
-${cleanup}
+        // Check if next character ends input
+        c = getchar();
+        if (c == '\\n' || c == EOF) break;
+    }
+
+    // Call function and print result
+    int result = ${functionName}(nums, size);
+    printf("%d\\n", result);
+
+    free(nums);
     return 0;
 }
-            `.trim();
-        }
+  `.trim();
+}
+
 
 
 
@@ -691,6 +459,9 @@ int main() {
 }
             `.trim();
     }
+
+  
+
 
     default:
       return userCode;

@@ -1,7 +1,7 @@
 export class CreateSubmissionDto {
   userId: string;
   problemKey: string;
-  languageId: number;
+  // languageId: number;
   code: string;
   output: string;
   status: string; // "Accepted", "Wrong Answer", etc.

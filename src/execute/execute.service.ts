@@ -154,14 +154,12 @@ export class ExecuteService {
   problemKey,
   userCode,
   language,
-  languageId,
   isAutoSubmitted = false,
 }: {
   userId: string;
   problemKey: string;
   userCode: string;
   language: 'python' | 'javascript' | 'c' | 'cpp' | 'java';
-  languageId: number;
   isAutoSubmitted?: boolean;
 }) {
   const result = await this.validateSubmission({ userCode, problemKey, language });
@@ -171,7 +169,6 @@ export class ExecuteService {
   await this.submissionService.create({
     userId,
     problemKey,
-    languageId,
     code: userCode,
     output: result.output,
     testResults: result.testResults,
