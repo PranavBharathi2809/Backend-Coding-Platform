@@ -7,15 +7,16 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { Applicant } from 'src/evaluation/entities/applicants.entity';
+
 
 @Entity()
 export class Submission {
   @PrimaryGeneratedColumn('uuid' )
   id: string;
 
-  @Column({type: 'uuid'})
-  userId: string;
-
+   @Column({ type: 'uuid' })
+  applicantId: string;  
 
   @Column()
   problemKey: string;
@@ -35,4 +36,9 @@ export class Submission {
 
   @CreateDateColumn()
   createdAt: Date;
+
+   @ManyToOne(() => Applicant)
+  @JoinColumn({ name: 'applicantId' })
+  applicant: Applicant;
+
 }

@@ -16,9 +16,9 @@ export class SubmissionService {
     return await this.submissionRepo.save(submission);
   }
 
-  async getAllByUser(userId: string): Promise<Submission[]> {
+  async getAllByUser(applicantId: string): Promise<Submission[]> {
     return this.submissionRepo.find({
-      where: { userId },
+      where: { applicantId },
       order: { createdAt: 'DESC' },
     });
   }

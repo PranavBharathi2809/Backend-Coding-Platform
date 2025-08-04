@@ -11,14 +11,14 @@ import { Language } from './language.entity';
 
 @Entity('function_names')
 export class FunctionName {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column()
-  problemId: number;
+  problemId: string;
 
   @Column()
-  languageId: number;
+  languageId: string;
 
   @Column()
   name: string;

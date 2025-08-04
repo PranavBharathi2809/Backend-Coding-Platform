@@ -21,7 +21,7 @@ async validateCode(@Body() dto: ValidateCodeDto) {
 }
 
 @Post('submit') // final submission or auto-submission, with DB write
-submit(@Body() dto: ValidateCodeDto & { userId: string; languageId: number; isAutoSubmitted?: boolean }) {
+submit(@Body() dto: ValidateCodeDto & { applicantId: string; languageId: number; isAutoSubmitted?: boolean }) {
   return this.executeService.submitCode(dto);
 
 }

@@ -11,7 +11,7 @@ import {
 import { Submission } from '../../problem/entities/submission.entity';
 import { Job } from 'src/Jobs/entities/job.entity';
 import { Role } from './role.entity';
-
+import { Problem } from 'src/problem/entities/problem.entity';
 
 @Entity('users')
 export class User {
@@ -41,6 +41,10 @@ export class User {
   @ManyToOne(() => Role, (role) => role.users)
   @JoinColumn({ name: 'role_id' })
   role: Role;
+
+  @OneToMany(() => Problem, (problem) => problem.createdBy)
+   problems: Problem[];
+
 
   @CreateDateColumn()
   createdAt: Date;

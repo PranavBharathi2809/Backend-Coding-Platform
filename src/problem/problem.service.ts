@@ -127,12 +127,12 @@ export class ProblemService {
    * Create a new problem
    */
   async addProblem(dto: CreateProblemDto) {
-    const { key, title, description, difficulty, languageConfigs, testCases } = dto;
+    const { key, title, description, difficulty,userId, languageConfigs, testCases } = dto;
 
     const existing = await this.problemRepo.findOne({ where: { key } });
     if (existing) throw new Error(`Problem with key '${key}' already exists`);
 
-    const problem = this.problemRepo.create({ key, title, description, difficulty }); // ✅ save difficulty
+    const problem = this.problemRepo.create({ key, title, description, difficulty, createdBy: {id:userId} }); // ✅ save difficulty
     await this.problemRepo.save(problem);
 
     for (const lang of languageConfigs) {

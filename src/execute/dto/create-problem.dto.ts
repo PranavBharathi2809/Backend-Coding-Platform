@@ -30,6 +30,9 @@ export class CreateProblemDto {
   @IsString()
   description: string;
 
+  @IsString()
+  userId: string;
+
 
   @IsEnum(['easy', 'medium', 'hard'], {
     message: 'Difficulty must be one of: easy, medium, hard',

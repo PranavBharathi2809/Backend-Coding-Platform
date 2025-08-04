@@ -3,11 +3,11 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne,JoinColumn } from 'ty
 import { Problem } from './problem.entity';
 @Entity('test_cases')
 export class TestCase {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column()
-  problemId: number;
+  problemId: string;
 
   @Column('text')
   input: string;

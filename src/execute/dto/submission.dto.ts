@@ -1,5 +1,5 @@
 export class CreateSubmissionDto {
-  userId: string;
+  applicantId: string;
   problemKey: string;
   // languageId: number;
   code: string;

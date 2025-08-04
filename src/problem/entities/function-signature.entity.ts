@@ -10,14 +10,14 @@ import { Language } from './language.entity';
 
 @Entity('function_signatures')
 export class FunctionSignature {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column()
-  problemId: number;
+  problemId: string;
 
   @Column()
-  languageId: number;
+  languageId: string;
 
   @Column('text')
   signature: string;

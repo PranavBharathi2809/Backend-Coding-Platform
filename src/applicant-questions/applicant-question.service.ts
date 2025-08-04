@@ -54,12 +54,12 @@ export class ApplicantQuestionService {
     const selected = problems[Math.floor(Math.random() * problems.length)];
 
     const attempt = await this.testAttemptRepo.findOneByOrFail({ id: attemptId });
-    const problem = await this.problemRepo.findOneByOrFail({ id: selected.id });
+    //const problem = await this.problemRepo.findOneByOrFail({ id: selected.id });
 
     const applicantQuestion = this.applicantQuestionRepo.create({
       applicant,
       test_attempt: attempt,
-      problem,
+      problem:selected,
       status: 'not_visited',
     });
 
@@ -77,7 +77,7 @@ export class ApplicantQuestionService {
  async getAssignedProblem(
   applicantId: string,
   attemptId: string,
-  languageId: number,
+  languageId: string,
 ): Promise<any> {
   const record = await this.applicantQuestionRepo.findOne({
     where: {
@@ -94,8 +94,8 @@ export class ApplicantQuestionService {
     ],
   });
 
-  if (!record) {
-    throw new NotFoundException('Problem not assigned yet for this applicant and attempt');
+  if (!record || !record.problem) {
+    throw new NotFoundException('Problem not assigned yet for this applicant and attempt or problem record missing');
   }
 
   const problem = record.problem;
@@ -106,11 +106,11 @@ export class ApplicantQuestionService {
   console.log('Selected languageId:', languageId);
 
   const selectedSignature = problem.functionSignatures.find(
-    (fs) => fs.language && fs.language.id === languageId,
+    (fs) => fs.language && fs.language.id === String(languageId),
   );
 
   const selectedFunctionName = problem.functionNames.find(
-    (fn) => fn.language && fn.language.id === languageId,
+    (fn) => fn.language && fn.language.id === String(languageId),
   );
 
   console.log('Selected signature:', selectedSignature?.signature);

@@ -150,13 +150,13 @@ export class ExecuteService {
 
 }
   async submitCode({
-  userId,
+  applicantId,
   problemKey,
   userCode,
   language,
   isAutoSubmitted = false,
 }: {
-  userId: string;
+  applicantId: string;
   problemKey: string;
   userCode: string;
   language: 'python' | 'javascript' | 'c' | 'cpp' | 'java';
@@ -167,7 +167,7 @@ export class ExecuteService {
   if ('error' in result) return result;
 
   await this.submissionService.create({
-    userId,
+    applicantId,
     problemKey,
     code: userCode,
     output: result.output,

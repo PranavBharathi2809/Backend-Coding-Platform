@@ -42,11 +42,11 @@ export class ApplicantQuestionController {
 async startOrFetchProblem(
   @Param('applicantId') applicantId: string,
   @Param('attemptId') attemptId: string,
-  @Param('languageId') languageIdStr: string,
+  @Param('languageId') languageId: string,
 ) {
-  const languageId = parseInt(languageIdStr, 10);
-  if (isNaN(languageId)) {
-    throw new BadRequestException('languageId must be a number');
+  
+  if (!languageId || typeof languageId !== 'string'){
+    throw new BadRequestException('languageId must be a UUID string');
   }
 
   try {
